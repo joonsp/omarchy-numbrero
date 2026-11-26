@@ -5,8 +5,8 @@
 A lightweight Omarchy shell bar widget and quick-calc popup powered by the native [Numbrero](https://github.com/joonsp/numbrero) scratchpad calculator.
 
 - **Left-click** the monochrome sombrero bar icon to open the quick calculator popup.
-- **Type variables and expressions** (`apples = 3`, `oranges = 5`, `fruits = apples + oranges`, `20% off $150`, `5 km in mi`, `255 in hex`) and see evaluated results listed below.
-- **Click any result** in the list to copy it to the clipboard.
+- **Type variables and expressions** (`apples = 3`, `oranges = 5`, `fruits = apples + oranges`, `20% off $150`, `5 km in mi`, `255 in hex`) and see live variable values listed below.
+- **Click any variable chip** to copy its value to the clipboard.
 - **Right-click** the bar icon (or click **Open App**) to launch the full multi-sheet Numbrero desktop window.
 
 ## Dependencies

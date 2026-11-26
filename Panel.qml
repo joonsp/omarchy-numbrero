@@ -18,7 +18,8 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   property string scratchText: "apples = 3\noranges = 5\nfruits = apples + oranges"
-  property var lineResults: []
+  property var varChips: []
+  property string lastError: ""
   property bool binaryMissing: false
   property string copiedBanner: ""
   property string pendingExpr: ""
@@ -66,22 +67,39 @@ Panel {
       if (!parsed || typeof parsed !== "object")
         return
 
-      var nextLines = []
+      var nextVars = []
+      if (parsed.variables && typeof parsed.variables === "object") {
+        var keys = Object.keys(parsed.variables)
+        var vLimit = Math.min(keys.length, 24)
+        for (var k = 0; k < vLimit; k++) {
+          var name = String(keys[k]).slice(0, 48)
+          var val = String(parsed.variables[keys[k]]).slice(0, 64)
+          nextVars.push({ name: name, value: val })
+        }
+      }
+
+      var errText = ""
+      var lastExprResult = ""
       if (Array.isArray(parsed.lines)) {
         var limit = Math.min(parsed.lines.length, 100)
         for (var i = 0; i < limit; i++) {
           var row = parsed.lines[i]
           if (!row || typeof row !== "object")
             continue
-          nextLines.push({
-            line: Number(row.line || (i + 1)),
-            result: typeof row.result === "string" ? row.result.slice(0, 120) : "",
-            error: typeof row.error === "string" ? row.error.slice(0, 120) : ""
-          })
+          if (errText === "" && typeof row.error === "string" && row.error.length > 0)
+            errText = "Line " + String(Number(row.line || (i + 1))) + ": " + row.error.slice(0, 120)
+          if (row.kind === "expression" && typeof row.result === "string" && row.result.length > 0)
+            lastExprResult = row.result.slice(0, 64)
+          else if (row.kind === "assignment")
+            lastExprResult = ""
         }
       }
 
-      lineResults = nextLines
+      if (lastExprResult.length > 0)
+        nextVars.push({ name: "=", value: lastExprResult })
+
+      varChips = nextVars
+      lastError = errText
     } catch (e) {
       // Ignore malformed partial output
     }
@@ -285,53 +303,51 @@ Panel {
           }
         }
 
-        // Live results list
-        Column {
+        // Variable & result chips
+        Flow {
           width: parent.width
-          spacing: Style.space(4)
-          visible: root.lineResults.length > 0
+          spacing: Style.space(6)
+          visible: root.varChips.length > 0
 
           Repeater {
-            model: root.lineResults
+            model: root.varChips
 
-            Item {
+            BorderSurface {
               required property var modelData
-              readonly property bool hasVal: modelData.result.length > 0 || modelData.error.length > 0
-              visible: hasVal
-              width: parent.width
-              implicitHeight: hasVal ? Style.space(22) : 0
+              implicitWidth: chipText.implicitWidth + Style.space(12)
+              implicitHeight: Style.space(22)
+              color: Qt.rgba(1, 1, 1, 0.05)
+              radius: Style.cornerRadius
+              borderSpec: Border.controlSpec("normal", root.foreground, root.accent)
 
               Text {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
+                id: chipText
+                anchors.centerIn: parent
                 textFormat: Text.PlainText
-                text: String(modelData.line) + ":"
+                text: modelData.name === "=" ? ("= " + modelData.value) : (modelData.name + " = " + modelData.value)
                 font.family: "monospace"
                 font.pixelSize: Style.font.caption
-                color: root.dim
-              }
-
-              Text {
-                anchors.right: parent.right
-                anchors.leftMargin: Style.space(28)
-                anchors.verticalCenter: parent.verticalCenter
-                horizontalAlignment: Text.AlignRight
-                elide: Text.ElideRight
-                textFormat: Text.PlainText
-                text: modelData.error.length > 0 ? modelData.error : modelData.result
-                font.family: "monospace"
-                font.pixelSize: Style.font.body
-                color: modelData.error.length > 0 ? "#F87171" : root.accent
+                color: modelData.name === "=" ? root.accent : root.foreground
               }
 
               MouseArea {
                 anchors.fill: parent
-                enabled: modelData.result.length > 0
-                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: root.copyValue(modelData.result)
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.copyValue(modelData.value)
               }
             }
           }
+        }
+
+        Text {
+          visible: root.lastError.length > 0
+          width: parent.width
+          wrapMode: Text.Wrap
+          textFormat: Text.PlainText
+          text: root.lastError
+          font.family: "monospace"
+          font.pixelSize: Style.font.caption
+          color: bar ? bar.urgent : "#F87171"
         }
       }
     }
