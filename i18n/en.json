@@ -1,8 +1,9 @@
 {
   "title": "Numbrero",
   "openApp": "Open App",
+  "getApp": "Get Full App",
   "placeholder": "apples = 3\noranges = 5\nfruits = apples + oranges",
   "copied": "Copied",
-  "missingBinary": "Install numbrero binary to evaluate expressions",
+  "standaloneHint": "Built-in mode · install Numbrero for multi-sheet desktop app",
   "tooltip": "Quick calculator (right-click to launch Numbrero)"
 }

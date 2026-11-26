@@ -4,8 +4,10 @@ import Quickshell.Io
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "FallbackEngine.js" as FallbackEngine
 
-// Bar button + quick-calc popup powered by `numbrero eval --json`.
+// Bar button + quick-calc popup powered by `numbrero eval --json` with a
+// pure-JS fallback evaluator when the native binary is not installed.
 Panel {
   id: root
   moduleName: "io.github.joonsp.numbrero"
@@ -32,12 +34,17 @@ Panel {
 
   function runEvaluation() {
     var bounded = scratchText.length > 8192 ? scratchText.slice(0, 8192) : scratchText
+    if (binaryMissing) {
+      applyEvalObject(FallbackEngine.evaluate(bounded))
+      return
+    }
     if (evalProc.running) {
       evalQueued = true
       pendingExpr = bounded
       return
     }
     pendingExpr = bounded
+    evalProc.sawExited = false
     evalProc.command = ["numbrero", "eval", "-e", bounded, "--json"]
     evalProc.running = true
   }
@@ -45,6 +52,11 @@ Panel {
   function openDesktopApp() {
     root.close()
     Quickshell.execDetached(["numbrero"])
+  }
+
+  function openRepoPage() {
+    root.close()
+    Quickshell.execDetached(["xdg-open", "https://github.com/joonsp/numbrero"])
   }
 
   function copyValue(valueText) {
@@ -55,51 +67,56 @@ Panel {
     copiedResetTimer.restart()
   }
 
+  function applyEvalObject(parsed) {
+    if (!parsed || typeof parsed !== "object")
+      return
+
+    var nextVars = []
+    if (parsed.variables && typeof parsed.variables === "object") {
+      var keys = Object.keys(parsed.variables)
+      var vLimit = Math.min(keys.length, 24)
+      for (var k = 0; k < vLimit; k++) {
+        var name = String(keys[k]).slice(0, 48)
+        var val = String(parsed.variables[keys[k]]).slice(0, 64)
+        nextVars.push({ name: name, value: val })
+      }
+    }
+
+    var errText = ""
+    var lastExprResult = ""
+    if (Array.isArray(parsed.lines)) {
+      var limit = Math.min(parsed.lines.length, 100)
+      for (var i = 0; i < limit; i++) {
+        var row = parsed.lines[i]
+        if (!row || typeof row !== "object")
+          continue
+        if (errText === "" && typeof row.error === "string" && row.error.length > 0)
+          errText = "Line " + String(Number(row.line || (i + 1))) + ": " + row.error.slice(0, 120)
+        if (row.kind === "expression" && typeof row.result === "string" && row.result.length > 0)
+          lastExprResult = row.result.slice(0, 64)
+        else if (row.kind === "assignment")
+          lastExprResult = ""
+      }
+    }
+
+    if (lastExprResult.length > 0)
+      nextVars.push({ name: "=", value: lastExprResult })
+
+    varChips = nextVars
+    lastError = errText
+  }
+
   function parseEvalOutput(raw, exitCode) {
     if (!raw || raw.length === 0 || raw.length > 65536) {
-      if (exitCode !== 0 && (!raw || raw.trim().length === 0))
+      if (exitCode !== 0 && (!raw || raw.trim().length === 0)) {
         binaryMissing = true
+        applyEvalObject(FallbackEngine.evaluate(pendingExpr))
+      }
       return
     }
     binaryMissing = false
     try {
-      var parsed = JSON.parse(raw)
-      if (!parsed || typeof parsed !== "object")
-        return
-
-      var nextVars = []
-      if (parsed.variables && typeof parsed.variables === "object") {
-        var keys = Object.keys(parsed.variables)
-        var vLimit = Math.min(keys.length, 24)
-        for (var k = 0; k < vLimit; k++) {
-          var name = String(keys[k]).slice(0, 48)
-          var val = String(parsed.variables[keys[k]]).slice(0, 64)
-          nextVars.push({ name: name, value: val })
-        }
-      }
-
-      var errText = ""
-      var lastExprResult = ""
-      if (Array.isArray(parsed.lines)) {
-        var limit = Math.min(parsed.lines.length, 100)
-        for (var i = 0; i < limit; i++) {
-          var row = parsed.lines[i]
-          if (!row || typeof row !== "object")
-            continue
-          if (errText === "" && typeof row.error === "string" && row.error.length > 0)
-            errText = "Line " + String(Number(row.line || (i + 1))) + ": " + row.error.slice(0, 120)
-          if (row.kind === "expression" && typeof row.result === "string" && row.result.length > 0)
-            lastExprResult = row.result.slice(0, 64)
-          else if (row.kind === "assignment")
-            lastExprResult = ""
-        }
-      }
-
-      if (lastExprResult.length > 0)
-        nextVars.push({ name: "=", value: lastExprResult })
-
-      varChips = nextVars
-      lastError = errText
+      applyEvalObject(JSON.parse(raw))
     } catch (e) {
       // Ignore malformed partial output
     }
@@ -110,6 +127,7 @@ Panel {
 
   onOpenedChanged: {
     if (opened) {
+      binaryMissing = false
       panel.ensureContent()
       runEvaluation()
       Qt.callLater(function() {
@@ -136,16 +154,24 @@ Panel {
   Process {
     id: evalProc
     property string capturedOut: ""
+    property bool sawExited: false
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: evalProc.capturedOut = text
     }
     onExited: function(code) {
+      evalProc.sawExited = true
       root.parseEvalOutput(evalProc.capturedOut, code)
       evalProc.capturedOut = ""
       if (root.evalQueued) {
         root.evalQueued = false
         root.runEvaluation()
+      }
+    }
+    onRunningChanged: {
+      if (!running && !sawExited) {
+        root.binaryMissing = true
+        root.applyEvalObject(FallbackEngine.evaluate(root.pendingExpr))
       }
     }
   }
@@ -172,10 +198,12 @@ Panel {
       }
     }
     onPressed: function(b) {
-      if (b === Qt.RightButton)
-        root.openDesktopApp()
-      else
+      if (b === Qt.RightButton) {
+        if (root.binaryMissing) root.openRepoPage()
+        else root.openDesktopApp()
+      } else {
         root.toggle()
+      }
     }
   }
 
@@ -249,21 +277,12 @@ Panel {
             id: openBtn
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: strings.t("openApp")
-            onClicked: root.openDesktopApp()
+            text: root.binaryMissing ? strings.t("getApp") : strings.t("openApp")
+            onClicked: {
+              if (root.binaryMissing) root.openRepoPage()
+              else root.openDesktopApp()
+            }
           }
-        }
-
-        // Missing binary notice
-        Text {
-          visible: root.binaryMissing
-          width: parent.width
-          wrapMode: Text.Wrap
-          textFormat: Text.PlainText
-          text: strings.t("missingBinary")
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          color: bar ? bar.urgent : "#F87171"
         }
 
         // Scratchpad input
@@ -348,6 +367,17 @@ Panel {
           font.family: "monospace"
           font.pixelSize: Style.font.caption
           color: bar ? bar.urgent : "#F87171"
+        }
+
+        Text {
+          visible: root.binaryMissing
+          width: parent.width
+          wrapMode: Text.Wrap
+          textFormat: Text.PlainText
+          text: strings.t("standaloneHint")
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          color: root.dim
         }
       }
     }

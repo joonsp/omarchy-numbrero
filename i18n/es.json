@@ -1,8 +1,9 @@
 {
   "title": "Numbrero",
   "openApp": "Abrir app",
+  "getApp": "Obtener app",
   "placeholder": "apples = 3\noranges = 5\nfruits = apples + oranges",
   "copied": "Copiado",
-  "missingBinary": "Instala el binario numbrero para evaluar expresiones",
+  "standaloneHint": "Modo integrado · instala Numbrero para la app de escritorio con varias hojas",
   "tooltip": "Calculadora rápida (clic derecho para abrir Numbrero)"
 }

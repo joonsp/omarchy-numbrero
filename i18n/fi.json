@@ -1,8 +1,9 @@
 {
   "title": "Numbrero",
   "openApp": "Avaa sovellus",
+  "getApp": "Hae täysi sovellus",
   "placeholder": "apples = 3\noranges = 5\nfruits = apples + oranges",
   "copied": "Kopioitu",
-  "missingBinary": "Asenna numbrero-ohjelma laskentaan",
+  "standaloneHint": "Sisäänrakennettu tila · asenna Numbrero saadaksesi monilehtisen työpöytäsovelluksen",
   "tooltip": "Pikalaskin (oikea klikkaus avaa Numbreron)"
 }

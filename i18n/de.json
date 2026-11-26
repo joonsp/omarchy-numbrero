@@ -1,8 +1,9 @@
 {
   "title": "Numbrero",
   "openApp": "App öffnen",
+  "getApp": "Voll-App laden",
   "placeholder": "apples = 3\noranges = 5\nfruits = apples + oranges",
   "copied": "Kopiert",
-  "missingBinary": "Installiere numbrero zum Auswerten von Ausdrücken",
+  "standaloneHint": "Integrierter Modus · Numbrero für die Desktop-App mit mehreren Blättern installieren",
   "tooltip": "Schnellrechner (Rechtsklick startet Numbrero)"
 }
