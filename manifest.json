@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.joonsp.numbrero",
+  "name": "Numbrero",
+  "version": "0.1.0",
+  "author": "Joonas Pajunen",
+  "license": "MIT",
+  "description": "Quick variable calculator popup and launcher for Numbrero",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Numbrero",
+    "description": "Quick variable calculator popup powered by Numbrero",
+    "category": "Utility",
+    "aliases": [
+      "calculator",
+      "math",
+      "scratchpad"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

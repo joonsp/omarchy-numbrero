@@ -1,0 +1,8 @@
+{
+  "title": "Numbrero",
+  "openApp": "Ouvrir l'app",
+  "placeholder": "apples = 3\noranges = 5\nfruits = apples + oranges",
+  "copied": "Copié",
+  "missingBinary": "Installez le binaire numbrero pour évaluer les expressions",
+  "tooltip": "Calculatrice rapide (clic droit pour lancer Numbrero)"
+}

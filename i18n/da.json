@@ -1,0 +1,8 @@
+{
+  "title": "Numbrero",
+  "openApp": "Åbn app",
+  "placeholder": "apples = 3\noranges = 5\nfruits = apples + oranges",
+  "copied": "Kopieret",
+  "missingBinary": "Installér numbrero for at beregne udtryk",
+  "tooltip": "Hurtig lommeregner (højreklik for at åbne Numbrero)"
+}
